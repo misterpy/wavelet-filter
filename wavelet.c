@@ -20,7 +20,9 @@ typedef unsigned int uint32_t;
 #define H_O 256
 
 void read_raw( uint8_t *Inp, int w, int h){
-	int f = open( "J:/Bauernöppel/TestBilder/lena512.raw", O_RDONLY | O_BINARY );
+	// int f = open( "J:/Bauernöppel/TestBilder/lena512.raw", O_RDONLY | O_BINARY );
+
+	int f = open( "target-foto/lena512.raw", O_RDONLY | O_BINARY );
 
 	int len = read (f, Inp, w*h);
 	if (len != w*h){
@@ -32,7 +34,8 @@ void read_raw( uint8_t *Inp, int w, int h){
 
 void write_pgm( const uint8_t *Out,  int w, int h){
 	char header[32];
-	int f = open( "I:/CE5/CA2/output/target_lena_a3.pgm", O_WRONLY|O_CREAT|O_TRUNC|O_BINARY, 0666 );
+	// int f = open( "I:/CE5/CA2/output/target_lena_a3.pgm", O_WRONLY|O_CREAT|O_TRUNC|O_BINARY, 0666 );
+	int f = open( "output/target_lena_a3.pgm", O_WRONLY|O_CREAT|O_TRUNC|O_BINARY, 0666 );
 	if (f < 0){
 		printf("failed to write output, exit\n");
 		exit(-1);
@@ -59,14 +62,14 @@ void write_pgm( const uint8_t *Out,  int w, int h){
 //	}
 //}
 
-void wavelet_filter_a( uint8_t *Out, uint8_t *Inp, int w, int h){
-	int x, y;
+void wavelet_filter_a( uint8_t *Out_temp, uint8_t *Out, uint8_t *Inp, int w, int h){
+	int x,y,i,j;
 	
-	//berechne O aus I
+	//berechne O_temp aus I
 	for (y = 0; y<h; y++){					//mit Randbehandlung
 		for (x = 0; x<w; x++){				//mit Randbehandlung (outer Pixels werden nicht beschrieben)
 			
-			// 3x3 Umgebung von Inp Pixel laden
+			// 5x5 Umgebung von Inp Pixel laden
 			// Single Assignment code -- Code wird in Register zugewiesen
 			
 			int x00 = *(Inp + W*(y-2) + x-2);
@@ -106,15 +109,22 @@ void wavelet_filter_a( uint8_t *Out, uint8_t *Inp, int w, int h){
 					+  (-2*x30) + 4*x31 + 12*x32 + 4*x33 + (-2*x34)			// -2  4 12  4 -2
 					+   1*x40 + (-2*x41) + (-6*x42) + (-2*x43) + 1*x44;		//  1 -2 -6 -2  1
 			
-			Out[W * y + x] = sum * 1 / 64;
+			Out_temp[W * y + x] = sum * 1 / 64;
 		}
 	}
-	//berechne O aus I
-	for (y = 0; y<h; y+=2){					//mit Randbehandlung
-		for (x = 0; x<w; x+=2){				//mit Randbehandlung (outer Pixels werden nicht beschrieben)
-			//Out[W * y + x] = sum / 2;
+	
+
+	// Auslesen "Out_temp" zu einem kleineren array als end Output array "Out".
+	for (y = 0, i = 0; y<h; y++){
+		if(y % 2 == 0){
+			for (x = 0, j = 0; x<w; x++){
+				if(x % 2 == 0){
+					Out[i][j] = Out_temp[y][x];
+					j++;
+				}
+				i++;
+			}
 		}
-		//Out[W * y + x] = sum / 2;
 	}
 }
 
@@ -219,11 +229,12 @@ uint8_t *Out; //output Bild
 int main(){
 
 	Inp = _cache_malloc( W*H, -1);
-	Out = _cache_malloc( W*H, -1);
+	Out_temp = _cache_malloc( W*H, -1);
+	Out = _cache_malloc(W_O*H_O, -1);
 	
 	read_raw( Inp, W, H );
-	wavelet_filter_a( Out, Inp, W, H);
-	write_pgm( Out, W_O, H_O );
+	wavelet_filter_a( Out_temp, Out, Inp, W, H);
+	write_pgm( Out, W/2, H/2 );
 
 	//process_2D( Out, Inp, W, H);
 	//wavelet_filter_a( Out, Inp, W, H);
@@ -231,6 +242,7 @@ int main(){
 	
 	_cache_free(Inp);
 	_cache_free(Out);
+	_cache_free(Out_temp);
 
 	
 	return 0;
