@@ -22,7 +22,7 @@ typedef unsigned int uint32_t;
 void read_raw( uint8_t *Inp, int w, int h){
 	// int f = open( "J:/Bauernöppel/TestBilder/lena512.raw", O_RDONLY | O_BINARY );
 
-	int f = open( "target-foto/lena512.raw", O_RDONLY | O_BINARY );
+	int f = open( "target-photo/lena512.raw", O_RDONLY | O_BINARY );
 
 	int len = read (f, Inp, w*h);
 	if (len != w*h){
@@ -35,7 +35,7 @@ void read_raw( uint8_t *Inp, int w, int h){
 void write_pgm( const uint8_t *Out,  int w, int h){
 	char header[32];
 	// int f = open( "I:/CE5/CA2/output/target_lena_a3.pgm", O_WRONLY|O_CREAT|O_TRUNC|O_BINARY, 0666 );
-	int f = open( "output/target_lena_a3.pgm", O_WRONLY|O_CREAT|O_TRUNC|O_BINARY, 0666 );
+	int f = open( "output/target_lena_v1.pgm", O_WRONLY|O_CREAT|O_TRUNC|O_BINARY, 0666 );
 	if (f < 0){
 		printf("failed to write output, exit\n");
 		exit(-1);
@@ -103,7 +103,7 @@ void wavelet_filter_v1(uint8_t *Out, uint8_t *Inp, int w, int h){
 							+  (-2*x30) + 4*x31 + 12*x32 + 4*x33 + (-2*x34)			// -2  4 12  4 -2
 							+   1*x40 + (-2*x41) + (-6*x42) + (-2*x43) + 1*x44;		//  1 -2 -6 -2  1
 					
-					Out[W/2 * i + j] = sum * 1 / 64;
+					Out[(W/2) * i + j] = sum * 1 / 64;
 					j++;
 				}
 				i++;
@@ -115,12 +115,12 @@ void wavelet_filter_v1(uint8_t *Out, uint8_t *Inp, int w, int h){
 /*
 Hier ist die Funktion ohne if verzweigerung.
 */
-void wavelet_filter_v1(uint8_t *Out, uint8_t *Inp, int w, int h){
+void wavelet_filter_v2(uint8_t *Out, uint8_t *Inp, int w, int h){
 	int x,y,i,j;
 	
 	//berechne O_temp aus I
-	for (y = 0, i=0; y<h; y+=2){					//mit Randbehandlung
-		for (x = 0, j=0; x<w; x+=2){			//mit Randbehandlung (outer Pixels werden beschrieben)
+	for (y = 2, i=1; y<h; y+=2){					//mit Randbehandlung
+		for (x = 2, j=1; x<w; x+=2){			//mit Randbehandlung (outer Pixels werden beschrieben)
 			// 5x5 Umgebung von Inp Pixel laden
 			// Single Assignment code -- Code wird in Register zugewiesen
 					
@@ -161,7 +161,7 @@ void wavelet_filter_v1(uint8_t *Out, uint8_t *Inp, int w, int h){
 					+  (-2*x30) + 4*x31 + 12*x32 + 4*x33 + (-2*x34)			// -2  4 12  4 -2
 					+   1*x40 + (-2*x41) + (-6*x42) + (-2*x43) + 1*x44;		//  1 -2 -6 -2  1
 					
-			Out[W/2 * i + j] = sum * 1 / 64;
+			Out[W * y + x] = sum * 1 / 64;
 			j++;
 			i++;
 		}
@@ -423,7 +423,7 @@ durchgefuehrt wird.
 Hier wird die Schleife 4 mal aufgerollt.
 */
 void wavelet_filter_restrict_manuell(uint8_t *restrict Out, uint8_t *restrict Inp, int w, int h){
-int x,y,i,j;
+int x,y,i;
 	
 	//berechne O_temp aus I
 	for (y = 0, i=0; y<h; y+=2){				//mit Randbehandlung
@@ -511,28 +511,29 @@ int x,y,i,j;
 	}
 }
 
-uint8_t *Inp; //input Bild
-uint8_t *Out; //output Bild
+uint8_t Inp[H][W]; //input Bild
+uint8_t Out[H_O][W_O]; //output Bild
 
 int main(){
 
 	/* Array erstellen */
-	Inp = _cache_malloc( W*H, -1);
-	Out = _cache_malloc(W_O*H_O, -1);
+	//Inp = _cache_malloc( W*H, -1);
+	//Out = _cache_malloc(W_O*H_O, -1);
 	/* --------------------------- */
 
 	read_raw( Inp, W, H );
-	wavelet_filter_v1( Out_temp, Out, Inp, W, H);
-	// wavelet_filter_restrict(Out, Inp, W, H);
-	// wavelet_filter_restrict_const(Out, Inp, W, H);
-	// wavelet_filter_restrict_tbta(Out, Inp, W, H);
-	// wavelet_filter_restrict_pragma(Out, Inp, W, H);
-	// wavelet_filter_restrict_manuell(Out, Inp, W, H);
-	write_pgm( Out, W/2, H/2 );
+	//wavelet_filter_v1( Out, Inp, W, H);
+	wavelet_filter_v2( Out, Inp, W, H);
+	//wavelet_filter_restrict(Out, Inp, W, H);
+	//wavelet_filter_restrict_const(Out, Inp, W, H);
+	//wavelet_filter_restrict_tbta(Out, Inp, W, H);
+	//wavelet_filter_restrict_pragma(Out, Inp, W, H);
+	//wavelet_filter_restrict_manuell(Out, Inp, W, H);
+	write_pgm( Out, W_O, H_O );
 	
-	_cache_free(Inp);
-	_cache_free(Out);
-	_cache_free(Out_temp);
+	//_cache_free(Inp);
+	//_cache_free(Out);
+	//_cache_free(Out_temp);
 
 	return 0;
 	
